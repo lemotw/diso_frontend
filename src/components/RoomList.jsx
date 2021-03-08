@@ -38,7 +38,7 @@ const initialRoom = {
   SecurityDeposit: 0,
   RentTimeStart: "",
   PaymentCycle: 0,
-  CycleCount: 0,
+  CycleCount: 1,
   Renter: {
     Name: "",
     Email: "",
@@ -46,20 +46,57 @@ const initialRoom = {
   }
 }
 const initialPaylog = []
-const Paylog_row = ({log}) => {
+const statusToString = (status) => {
+  switch(status){
+    case 0:
+      return "=";
+    case 1:
+      return "等待房客付款";
+    case 2:
+      return "已付款";
+    case 3:
+      return "定單過期";
+  }
+}
+const Paylog_row = ({log:log_}) => {
+
+  const column_log = React.useMemo(() => [{
+    Header: () => null,
+    id: 'column_header',
+    columns: [{
+      Header: '付款日期',
+      accessor: 'PayDate',
+      },{
+        Header: '付款日期',
+        accessor: 'PayAmount',
+      },{
+        Header: '狀態',
+        accessor: 'Status',
+        Cell: props => {
+          return statusToString(props.row.original.Status);
+        }
+      }],
+      }],[]);
+  console.log(log_)
+
   return (
-    <><h3><b>{log.PayDate} 本期已付款</b></h3><br/></>
+    <div className="table-responsive">
+      <Table columns={column_log} data={log_}/>
+    </div>
   );
 }
 
 const RoomList = ({
   roomList, setRoomList, show
 }) => {
-  if(roomList.length == 0) {
+  useEffect(()=>{
     apiRoomList({}).then((res) => {
       setRoomList(res.data);
+    }).catch((error) => {
+      errorReport(error.response.data.error_message);
     });
-  }
+  } ,[])
+
   const [innerRoomList, setInnerRoomList] = useState(roomList)
   const [editShow, setEditShow] = useState(false)
   const [newShow, setNewShow] = useState(false)
@@ -96,7 +133,6 @@ const RoomList = ({
   }
   const openSetRoom = (props) => {
     return () => {
-      console.log(props.row.original);
       setEditRoom(props.row.original);
       setUpdateIndex(props.row.index);
       handleEditOpen();
@@ -105,8 +141,6 @@ const RoomList = ({
     return () => {
       setPaylog(props.row.original.RentRecords);
       setPaylogShow(true);
-      console.log(props.row.original.RentRecords);
-      console.log(paylog);
     }
   } 
 
@@ -433,19 +467,12 @@ const RoomList = ({
       style={customStyles}
     >
       <Row>
-
-        <Box type="primary" title="租房編輯" footer={
+        <Box type="primary" title="付款紀錄" footer={
           <>
-            <Button type="primary" text="print" onClick={()=>{paylog.map((d)=>{console.log(d.PayDate)})}}/>
             <Button type="default" text="關閉" onClick={()=>{setPaylogShow(false)}}/>
           </>
         }>
-          {paylog.map((log) => {
-            <>
-            <h1>123</h1>
-            <Paylog_row log={log}/>
-            </>
-          })}
+        <Paylog_row log={paylog}/>
         </Box>
       </Row>
    </Modal>

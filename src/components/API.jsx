@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const baseURL = 'http://diso.ito-trip.com/:8080'
+const baseURL = 'https://diso.ito-trip.com:8443/'
+// const baseURL = "http://localhost:8000"
 
 axios.defaults.withCredentials = true;
 axios.defaults.headers.post['Access-Control-Allow-Origin'] = '*';

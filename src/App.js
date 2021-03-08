@@ -31,6 +31,7 @@ const saveAuth = (auth) =>
 function App() {
   const [auth, setAuth] = useState(defaultAuth)
   const [roomList, setRoomList] = useState([])
+  const [roomAttempt, setRoomAttempt] = useState(false)
   const [ss, setss] = useState(false)
   useEffect(() =>saveAuth(auth), [auth]);
   useEffect(() => {
@@ -52,7 +53,7 @@ function App() {
     <div className="app-container">
       <AdminLTE title={["DiSoo"]} titleShort={["Di", "Soo"]} theme="black" sidebar={sidebar}>
         <PrivateRoute auth={auth} path="/roomlist" redirect="/login">
-          <RoomList roomList={roomList} show={false} setRoomList={setRoomList}/>
+          <RoomList roomList={roomList} show={false} setRoomList={setRoomList} roomAttempt={roomAttempt} setRoomAttempt={setRoomAttempt}/>
         </PrivateRoute>
 
         <Login path="/login" auth={auth} setAuth={setAuth} to="/"/>
