@@ -6,10 +6,10 @@ import { useState, useEffect } from 'react';
 
 import './css/App.css';
 import {apiRoomList} from "./components/API.jsx";
-import HelloWorld from './components/Helloworld.jsx'
 import RoomList from "./components/RoomList.jsx"
 import Logout from "./components/Logout.jsx"
 import Login from './components/Login.jsx'
+import SignUp from './components/SignUp.jsx'
 import {PrivateRoute, PrivateItem, NotPrivateItem} from "./components/Private.jsx"
 
 
@@ -42,11 +42,11 @@ function App() {
   let sidebar = [
     <UserPanel username={auth.username} imageUrl={user} status={auth.role} statusType="success"/>,
     <NotPrivateItem auth={auth}><Item key="login" text="登入" to="/login" /></NotPrivateItem>,
+    <NotPrivateItem auth={auth}><Item key="signup" text="註冊" to="/signup" /></NotPrivateItem>,
     <PrivateItem auth={auth}><Item key="logout" text="登出" to="/logout" icon="fas-power-off"/></PrivateItem>,
     <Header text="操作" />,
     <PrivateItem auth={auth}><Item key="roomlist" text="客房清單" to="/roomlist" /></PrivateItem>,
   ];
-
 
   return (
     <div className="app-container">
@@ -57,6 +57,7 @@ function App() {
 
         <Login path="/login" auth={auth} setAuth={setAuth} to="/"/>
         <Logout path="/logout" auth={auth} setAuth={setAuth} to="/"/>
+        <SignUp path="/signup" auth={auth} setAuth={setAuth} to="/login"/>
       </AdminLTE>
     </div>
   );

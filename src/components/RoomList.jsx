@@ -1,7 +1,10 @@
 import React, { Component } from 'react';
-import {apiRoomList, apiRoomUpdate} from "./API.jsx";
+import {apiRoomList, apiRoomUpdate, apiRoomNew, apiRoomDelete} from "./API.jsx";
 import {useState, useEffect} from 'react';
 import Datetime from 'react-datetime';
+
+import Snackbar from '@material-ui/core/Snackbar';
+import Alert from '@material-ui/lab/Alert';
 
 import Modal from 'react-modal';
 import Table from './Table.jsx';
@@ -42,6 +45,12 @@ const initialRoom = {
     Phone: ""
   }
 }
+const initialPaylog = []
+const Paylog_row = ({log}) => {
+  return (
+    <><h3><b>{log.PayDate} 本期已付款</b></h3><br/></>
+  );
+}
 
 const RoomList = ({
   roomList, setRoomList, show
@@ -54,17 +63,29 @@ const RoomList = ({
   const [innerRoomList, setInnerRoomList] = useState(roomList)
   const [editShow, setEditShow] = useState(false)
   const [newShow, setNewShow] = useState(false)
+  const [paylogShow, setPaylogShow] = useState(false)
+  const [updateIndex, setUpdateIndex] = useState(0)
+  const [paylog, setPaylog] = useState(initialPaylog)
+
   const [notice, setNotice] = useState(false)
+  const [noticeStr, setNoticeStr] = useState("")
+  const [success, setSuccess] = useState(false)
+  const [successStr, setSuccessStr] = useState("")
 
   const [cycle, setCycle] = useState(1)
   const [cycleLong, setCycleLong] = useState("月")
   const [newRoom, setNewRoom] = useState(initialRoom)
   const [editRoom, setEditRoom] = useState(initialRoom)
   const setRoomValue = (event_) => {
-    console.log(event_);
     setEditRoom({
       ...editRoom,
       [event_.target.name]: event_.target.value
+    });
+  }
+  const setRoomNumberValue = (event_) => {
+    setEditRoom({
+      ...editRoom,
+      [event_.target.name]: parseInt(event_.target.value)==NaN?editRoom[event_.target.name]:parseInt(event_.target.value)
     });
   }
   const setNewRoomValue = (event_) => {
@@ -75,29 +96,101 @@ const RoomList = ({
   }
   const openSetRoom = (props) => {
     return () => {
-    setEditRoom(props.row.original);
-    handleEditOpen();
+      console.log(props.row.original);
+      setEditRoom(props.row.original);
+      setUpdateIndex(props.row.index);
+      handleEditOpen();
   }};
+  const openPaylogShow = (props)=> {
+    return () => {
+      setPaylog(props.row.original.RentRecords);
+      setPaylogShow(true);
+      console.log(props.row.original.RentRecords);
+      console.log(paylog);
+    }
+  } 
 
   useEffect(()=>setInnerRoomList(roomList) ,[roomList])
+  // Update Page cycle 顯示 effect
   useEffect(()=>setCycleLong(((cycle/12 >= 1)?((cycle/12)+"年"):"") + ((cycle%12 >= 1)?((cycle%12)+"月"):"")), [cycle])
   const [handleEditOpen, handleEditClose] = [() => {setEditShow(true)}, () => {setEditShow(false)}]
   const [handleNewOpen, handleNewClose] = [() => {setNewShow(true)}, () => {setNewShow(false)}]
 
+  const errorReport = (str) => {
+    setNoticeStr(str);
+    setNotice(true);
+  }
+  const successReport = (str) => {
+    setSuccessStr(str);
+    setSuccess(true);
+  }
+
   const createRoom = () => {
-    apiRoomUpdate({
-      id: 0,
-      name : "陶朱隱園五樓",
-      address : "台北市信義區松勇路",
-      rent : 100000,
-      securityDeposit : 200000,
-      rentTimeStart : "2021-03-03T22:53:28+00:00",
-      paymentCycle : 1,
-      cycleCount : 24,
-      renterName : "王永慶女兒",
-      renterEmail : "kusyunexcl@gmail.com",
-      renterPhone : "0979992680"
+    apiRoomNew({
+      name : newRoom.Name,
+      address : newRoom.Address,
+      rent : parseInt(newRoom.Rent)==NaN?0:parseInt(newRoom.Rent),
+      securityDeposit : parseInt(newRoom.SecurityDeposit)==NaN?0:parseInt(newRoom.SecurityDeposit),
+      rentTimeStart : newRoom.RentTimeStart,
+      paymentCycle : parseInt(newRoom.PaymentCycle)==NaN?0:parseInt(newRoom.PaymentCycle),
+      cycleCount : parseInt(newRoom.CycleCount)==NaN?0:parseInt(newRoom.CycleCount),
+      renterName : newRoom.Renter.Name,
+      renterEmail : newRoom.Renter.Email,
+      renterPhone : newRoom.Renter.Phone
+    }).then((res) => {
+      setRoomList([
+        ...roomList,
+        {
+          ...newRoom,
+          ID: res.data.id
+        }
+      ]);
+      setNewRoom(initialRoom);
+      handleNewClose();
+      successReport("成功新增");
+    }).catch((error) => {
+      errorReport(error.response.data.error_message);
     })
+  };
+
+  const updateRoom = () => {
+    apiRoomUpdate({
+      ID: editRoom.ID,
+      name : editRoom.Name,
+      address : editRoom.Address,
+      rent : editRoom.Rent,
+      securityDeposit : editRoom.SecurityDeposit,
+      rentTimeStart : editRoom.RentTimeStart,
+      paymentCycle : editRoom.PaymentCycle,
+      cycleCount : editRoom.CycleCount,
+      renterName : editRoom.Renter.Name,
+      renterEmail : editRoom.Renter.Email,
+      renterPhone : editRoom.Renter.Phone
+    }).then((res) => {
+
+      setRoomList(([...roomList]) => Object.assign(roomList, { [updateIndex]: editRoom }));
+
+      setEditRoom(initialRoom);
+      handleEditClose();
+      successReport("成功修改");
+    }).catch((error) => {
+      errorReport(error.response.data.error_message);
+    })
+  };
+
+  const deleteRoom = (props_) => {
+    return () => {
+      apiRoomDelete({
+        id: props_.row.original.ID
+      }).then((res) => {
+        successReport("成功刪除");
+      }).catch((error) => {
+        errorReport(error.response.data.error_message);
+      });
+
+      // delete from room list
+      setRoomList((roomlist) => roomlist.filter((t, _)=>t.ID !== props_.row.original.ID))
+    }
   }
 
   // Filter
@@ -134,7 +227,12 @@ const RoomList = ({
                   <Button block type="primary" text="修改" onClick={openSetRoom(props)}/>
                 </Col>
                 <Col xs={6}>
-                  <Button block type="danger" text="刪除"/>
+                  <Button block type="danger" text="刪除" onClick={deleteRoom(props)}/>
+                </Col>
+              </Row>
+              <Row>
+                <Col xs={12}>
+                  <Button block type="default" text="付款紀錄" onClick={openPaylogShow(props)}/>
                 </Col>
               </Row>
               </>
@@ -142,6 +240,7 @@ const RoomList = ({
           }}],
         }],[]);
 
+  // Element downside
   return (
     <>
     <Content title="房間列表" subTitle="preview of simple tables">
@@ -180,7 +279,7 @@ const RoomList = ({
       <Row>
         <Box type="primary" title="租房新增" footer={
           <>
-            <Button type="primary" text="Save" onClick={()=>{}}/>
+            <Button type="primary" text="Save" onClick={createRoom}/>
             <Button type="default" text="Cancel" onClick={handleNewClose}/>
           </>
         }>
@@ -215,7 +314,7 @@ const RoomList = ({
           </select> <br/><br/>
 
           <label>租約期長：</label>
-          <Text name="CycleCount" value={newRoom.CycleCount} iconLeft="fas-home" labelPosition="none" placeholder={cycleLong} onChange={setNewRoomValue}/>
+          <Text name="PaymentCycle" value={newRoom.PaymentCycle} iconLeft="fas-home" labelPosition="none" placeholder={cycleLong} onChange={setNewRoomValue}/>
 
           <label>承租人姓名：</label>
           <Text iconLeft="fas-user" value={newRoom.Renter.Name} labelPosition="none" placeholder="承租人姓名" onChange={(event_) => {
@@ -257,7 +356,7 @@ const RoomList = ({
       <Row>
         <Box type="primary" title="租房編輯" footer={
           <>
-            <Button type="primary" text="Save" />
+            <Button type="primary" text="Save" onClick={updateRoom} />
             <Button type="default" text="Cancel" onClick={handleEditClose}/>
           </>
         }>
@@ -266,9 +365,9 @@ const RoomList = ({
           <label>地址：</label>
           <Text name="Address" value={editRoom.Address} iconLeft="fas-home" labelPosition="none" placeholder="地址" onChange={setRoomValue}/>
           <label>租金：</label>
-          <Text name="Rent" value={editRoom.Rent} iconLeft="fa-credit-card" labelPosition="none" placeholder="租金" onChange={setRoomValue}/>
+          <Text name="Rent" value={editRoom.Rent} iconLeft="fa-credit-card" labelPosition="none" placeholder="租金" onChange={setRoomNumberValue}/>
           <label>保證金：</label>
-          <Text name="SecurityDeposit" value={editRoom.SecurityDeposit} iconLeft="fa-credit-card" labelPosition="none" placeholder="保證金" onChange={setRoomValue}/>
+          <Text name="SecurityDeposit" value={editRoom.SecurityDeposit} iconLeft="fa-credit-card" labelPosition="none" placeholder="保證金" onChange={setRoomNumberValue}/>
 
           <label>租金起始：</label>
           <Datetime
@@ -286,7 +385,7 @@ const RoomList = ({
           <br/>
 
           <label>租金收款週期：</label>
-          <select name="CycleCount" onChange={setRoomValue}>
+          <select name="CycleCount" onChange={setRoomNumberValue}>
             <option value="1">每月</option>
             <option value="12">每年</option>
           </select> <br/><br/>
@@ -327,7 +426,37 @@ const RoomList = ({
         </Box>
       </Row>
     </Modal>
-    
+
+    <Modal
+      isOpen={paylogShow}
+      contentLabel="Example Modal"
+      style={customStyles}
+    >
+      <Row>
+
+        <Box type="primary" title="租房編輯" footer={
+          <>
+            <Button type="primary" text="print" onClick={()=>{paylog.map((d)=>{console.log(d.PayDate)})}}/>
+            <Button type="default" text="關閉" onClick={()=>{setPaylogShow(false)}}/>
+          </>
+        }>
+          {paylog.map((log) => {
+            <>
+            <h1>123</h1>
+            <Paylog_row log={log}/>
+            </>
+          })}
+        </Box>
+      </Row>
+   </Modal>
+
+
+    <Snackbar open={notice} autoHideDuration={6000} onClose={()=>{setNotice(false);}}>
+      <Alert severity="error">{noticeStr}</Alert>
+    </Snackbar>
+    <Snackbar open={success} autoHideDuration={6000} onClose={()=>{setSuccess(false);}}>
+      <Alert severity="success">{successStr}</Alert>
+    </Snackbar>
     </>
   );
 }
